@@ -1,0 +1,433 @@
+
+<html lang="id">
+<head>
+    <meta charset="UTF-8"></meta>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"></meta>
+    <title>DompetKu - Login</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet"></link>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"></link>
+
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f3f4f6; }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        /* Loading Spinner */
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #6366f1;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="text-slate-800 h-screen flex flex-col">
+
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900 bg-opacity-90 backdrop-blur-sm transition-opacity duration-500" id="loginPage">
+        <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md text-center border border-slate-700">
+            <div class="bg-indigo-500 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-indigo-500/50">
+                <i class="fa-solid fa-wallet text-3xl text-white"></i>
+            </div>
+            <h1 class="text-2xl font-bold text-slate-800 mb-2">Selamat Datang di DompetKu</h1>
+            <p class="text-slate-500 mb-8">Kelola keuangan harian Anda dengan mudah, rapi, dan aman.</p>
+            
+            <button class="w-full flex items-center justify-center gap-3 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-medium py-3 px-4 rounded-xl transition-all shadow-sm hover:shadow-md group" onclick="loginWithGoogle()">
+                <img alt="Google Logo" class="w-6 h-6" src="https://www.svgrepo.com/show/475656/google-color.svg" />
+                <span>Masuk dengan Google</span>
+            </button>
+            
+            <p class="text-rose-500 text-sm mt-4 hidden" id="loginError"></p>
+        </div>
+    </div>
+
+    <div class="hidden flex-1 flex flex-col min-h-screen" id="mainApp">
+        
+        <nav class="bg-slate-900 text-white shadow-lg sticky top-0 z-40">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex items-center justify-between h-16">
+                    <div class="flex items-center gap-3">
+                        <div class="bg-indigo-500 p-2 rounded-lg">
+                            <i class="fa-solid fa-wallet text-white"></i>
+                        </div>
+                        <span class="font-bold text-xl tracking-tight hidden sm:block">DompetKu</span>
+                    </div>
+                    
+                    <div class="flex items-center gap-4">
+                        <button class="hidden sm:flex bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition items-center gap-2" onclick="downloadCSV()">
+                            <i class="fa-solid fa-file-csv"></i> <span class="hidden md:inline">Laporan</span>
+                        </button>
+                        
+                        <div class="flex items-center gap-3 pl-4 border-l border-slate-700">
+                            <div class="text-right hidden md:block">
+                                <p class="text-sm font-semibold text-white" id="userName">User</p>
+                                <p class="text-xs text-slate-400">Basic Plan</p>
+                            </div>
+                            <img alt="Profile" class="w-9 h-9 rounded-full border-2 border-indigo-500" id="userPhoto" src="" />
+                            <button class="text-slate-400 hover:text-white transition" onclick="logout()">
+                                <i class="fa-solid fa-right-from-bracket"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="glass-panel p-6 rounded-2xl shadow-sm border-l-4 border-indigo-500">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-sm font-medium text-slate-500 mb-1">Total Saldo</p>
+                            <h3 class="text-2xl font-bold text-slate-800" id="displayBalance">Rp 0</h3>
+                        </div>
+                        <div class="p-3 bg-indigo-50 rounded-full text-indigo-600">
+                            <i class="fa-solid fa-scale-balanced"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="glass-panel p-6 rounded-2xl shadow-sm border-l-4 border-emerald-500">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-sm font-medium text-slate-500 mb-1">Total Pemasukan</p>
+                            <h3 class="text-2xl font-bold text-emerald-600" id="displayIncome">Rp 0</h3>
+                        </div>
+                        <div class="p-3 bg-emerald-50 rounded-full text-emerald-600">
+                            <i class="fa-solid fa-arrow-trend-up"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="glass-panel p-6 rounded-2xl shadow-sm border-l-4 border-rose-500">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-sm font-medium text-slate-500 mb-1">Total Pengeluaran</p>
+                            <h3 class="text-2xl font-bold text-rose-600" id="displayExpense">Rp 0</h3>
+                        </div>
+                        <div class="p-3 bg-rose-50 rounded-full text-rose-600">
+                            <i class="fa-solid fa-arrow-trend-down"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div class="lg:col-span-1 space-y-6">
+                    <div class="bg-white p-6 rounded-2xl shadow-sm">
+                        <h3 class="text-lg font-bold mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-circle-plus text-indigo-500"></i> Tambah Transaksi
+                        </h3>
+                        <form class="space-y-4" id="transactionForm">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-600 mb-1">Jenis</label>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <label class="cursor-pointer">
+                                        <input checked="" class="peer sr-only" name="type" type="radio" value="income" />
+                                        <div class="text-center py-2 rounded-lg border border-slate-200 peer-checked:bg-emerald-500 peer-checked:text-white peer-checked:border-emerald-500 transition">Pemasukan</div>
+                                    </label>
+                                    <label class="cursor-pointer">
+                                        <input class="peer sr-only" name="type" type="radio" value="expense" />
+                                        <div class="text-center py-2 rounded-lg border border-slate-200 peer-checked:bg-rose-500 peer-checked:text-white peer-checked:border-rose-500 transition">Pengeluaran</div>
+                                    </label>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-600 mb-1">Tanggal</label>
+                                <input class="w-full px-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500" id="tDate" required="" type="date" />
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-600 mb-1">Nominal (Rp)</label>
+                                <input class="w-full px-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500" id="tAmount" placeholder="0" required="" type="number" />
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-600 mb-1">Keterangan</label>
+                                <input class="w-full px-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500" id="tDesc" placeholder="Contoh: Gaji, Makan..." required="" type="text" />
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-600 mb-1">Akun</label>
+                                <select class="w-full px-4 py-2 rounded-lg border border-slate-200 bg-white" id="tAccount"></select>
+                            </div>
+                            <button class="w-full bg-slate-900 text-white py-3 rounded-xl font-medium hover:bg-slate-800 transition shadow-lg shadow-indigo-500/20" type="submit">Simpan</button>
+                        </form>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-2xl shadow-sm">
+                        <h3 class="text-lg font-bold mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-credit-card text-indigo-500"></i> Akun
+                        </h3>
+                        <form class="flex gap-2 mb-4" id="accountForm">
+                            <input class="flex-1 px-4 py-2 rounded-lg border border-slate-200 text-sm" id="newAccountName" placeholder="Nama Akun Baru" required="" type="text" />
+                            <button class="bg-indigo-500 text-white px-4 py-2 rounded-lg hover:bg-indigo-600" type="submit"><i class="fa-solid fa-plus"></i></button>
+                        </form>
+                        <ul class="space-y-2 text-sm text-slate-600 max-h-40 overflow-y-auto" id="accountListDisplay"></ul>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-2 space-y-6">
+                    <div class="bg-white p-2 rounded-xl shadow-sm inline-flex mb-2 overflow-x-auto">
+                        <button class="px-6 py-2 rounded-lg text-sm font-medium transition bg-slate-100 text-slate-900" id="btnHistory" onclick="switchTab('history')">Riwayat</button>
+                        <button class="px-6 py-2 rounded-lg text-sm font-medium transition text-slate-500 hover:bg-slate-50" id="btnDaily" onclick="switchTab('daily')">Harian</button>
+                        <button class="px-6 py-2 rounded-lg text-sm font-medium transition text-slate-500 hover:bg-slate-50" id="btnMonthly" onclick="switchTab('monthly')">Bulanan</button>
+                    </div>
+
+                    <div class="bg-white rounded-2xl shadow-sm overflow-hidden min-h-[400px]" id="viewHistory">
+                        <div class="p-6 border-b border-slate-100 flex justify-between items-center">
+                            <h3 class="font-bold text-lg">Transaksi</h3>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead class="bg-slate-50 text-slate-500 text-xs uppercase">
+                                    <tr>
+                                        <th class="p-4 font-semibold">Tgl</th>
+                                        <th class="p-4 font-semibold">Ket</th>
+                                        <th class="p-4 font-semibold">Akun</th>
+                                        <th class="p-4 font-semibold text-right">Rp</th>
+                                        <th class="p-4 text-center">Act</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="text-sm divide-y divide-slate-100" id="transactionTableBody"></tbody>
+                            </table>
+                            <div class="hidden p-8 text-center text-slate-400" id="emptyState">
+                                <i class="fa-regular fa-folder-open text-4xl mb-2"></i>
+                                <p>Belum ada data.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="hidden bg-white rounded-2xl shadow-sm overflow-hidden min-h-[400px]" id="viewDaily">
+                         <div class="p-6 border-b border-slate-100"><h3 class="font-bold text-lg">Rekap Harian</h3></div>
+                         <table class="w-full text-left"><thead class="bg-slate-50 text-slate-500 text-xs uppercase"><tr><th class="p-4">Tanggal</th><th class="p-4 text-emerald-600">Masuk</th><th class="p-4 text-rose-600">Keluar</th></tr></thead><tbody class="text-sm divide-y divide-slate-100" id="dailyRecapBody"></tbody></table>
+                    </div>
+                    <div class="hidden bg-white rounded-2xl shadow-sm overflow-hidden min-h-[400px]" id="viewMonthly">
+                        <div class="p-6 border-b border-slate-100"><h3 class="font-bold text-lg">Rekap Bulanan</h3></div>
+                        <table class="w-full text-left"><thead class="bg-slate-50 text-slate-500 text-xs uppercase"><tr><th class="p-4">Bulan</th><th class="p-4 text-emerald-600">Masuk</th><th class="p-4 text-rose-600">Keluar</th></tr></thead><tbody class="text-sm divide-y divide-slate-100" id="monthlyRecapBody"></tbody></table>
+                    </div>
+                </div>
+            </div>
+            
+            <footer class="mt-12 text-center text-slate-400 text-sm">
+                <p>© 2024 DompetKu. Login via Google Firebase.</p>
+            </footer>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // 1. KONFIGURASI FIREBASE (WAJIB DIGANTI!)
+        // ==========================================
+        // Anda harus membuat project di https://console.firebase.google.com/
+        // Lalu copy config dari Project Settings > General > Your Apps
+        const firebaseConfig = {
+            apiKey: "AIzaSyDdRDUd6F5VGmBzA_ezu-G2N_pktP1CHps",
+            authDomain: "dompetku-a4723.firebaseapp.com",
+            projectId: "dompetku-a4723",
+            storageBucket: "dompetku-a4723.firebasestorage.app",
+            messagingSenderId: "778460049874",
+            appId: "1:778460049874:web:428c1e5155618f4225180b"
+        };
+
+        // Initialize Firebase
+        let auth;
+        try {
+            firebase.initializeApp(firebaseConfig);
+            auth = firebase.auth();
+        } catch (e) {
+            console.error("Firebase Error:", e);
+            document.getElementById('loginError').innerText = "Error: Konfigurasi Firebase belum diatur di kode.";
+            document.getElementById('loginError').classList.remove('hidden');
+        }
+
+        // ==========================================
+        // 2. LOGIC APLIKASI
+        // ==========================================
+        let currentUser = null;
+        let transactions = [];
+        let accounts = [];
+
+        // DOM Elements
+        const els = {
+            loginPage: document.getElementById('loginPage'),
+            mainApp: document.getElementById('mainApp'),
+            userPhoto: document.getElementById('userPhoto'),
+            userName: document.getElementById('userName'),
+            // App Elements
+            balance: document.getElementById('displayBalance'),
+            income: document.getElementById('displayIncome'),
+            expense: document.getElementById('displayExpense'),
+            form: document.getElementById('transactionForm'),
+            tableBody: document.getElementById('transactionTableBody'),
+            accountSelect: document.getElementById('tAccount'),
+            accountList: document.getElementById('accountListDisplay'),
+            dailyBody: document.getElementById('dailyRecapBody'),
+            monthlyBody: document.getElementById('monthlyRecapBody'),
+            emptyState: document.getElementById('emptyState')
+        };
+
+        // --- AUTHENTICATION ---
+        
+        // Listen to Auth State Changes
+        if(auth) {
+            auth.onAuthStateChanged(user => {
+                if (user) {
+                    // User is signed in
+                    currentUser = user;
+                    els.loginPage.classList.add('hidden');
+                    els.mainApp.classList.remove('hidden');
+                    
+                    els.userPhoto.src = user.photoURL || 'https://via.placeholder.com/150';
+                    els.userName.innerText = user.displayName || 'Pengguna';
+                    
+                    loadData(user.uid); // Load data specific to this user
+                } else {
+                    // User is signed out
+                    currentUser = null;
+                    els.loginPage.classList.remove('hidden');
+                    els.mainApp.classList.add('hidden');
+                }
+            });
+        }
+
+        function loginWithGoogle() {
+            if(!auth) return alert("Firebase belum dikonfigurasi!");
+            const provider = new firebase.auth.GoogleAuthProvider();
+            auth.signInWithPopup(provider).catch(error => {
+                document.getElementById('loginError').innerText = error.message;
+                document.getElementById('loginError').classList.remove('hidden');
+            });
+        }
+
+        function logout() {
+            auth.signOut();
+        }
+
+        // --- DATA MANAGEMENT (KEYED BY USER ID) ---
+
+        function loadData(uid) {
+            // Kita gunakan UID agar data tiap user berbeda di localStorage
+            const tData = localStorage.getItem(`dompetku_trx_${uid}`);
+            const aData = localStorage.getItem(`dompetku_acc_${uid}`);
+            
+            transactions = tData ? JSON.parse(tData) : [];
+            accounts = aData ? JSON.parse(aData) : ['Tunai', 'Bank', 'E-Wallet'];
+            
+            document.getElementById('tDate').valueAsDate = new Date();
+            updateUI();
+        }
+
+        function saveData() {
+            if (!currentUser) return;
+            localStorage.setItem(`dompetku_trx_${currentUser.uid}`, JSON.stringify(transactions));
+            localStorage.setItem(`dompetku_acc_${currentUser.uid}`, JSON.stringify(accounts));
+            updateUI();
+        }
+
+        // --- APP LOGIC (Sama seperti sebelumnya) ---
+
+        // Add Transaction
+        els.form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const formData = new FormData(els.form);
+            const newTrx = {
+                id: Date.now(),
+                date: document.getElementById('tDate').value,
+                type: formData.get('type'),
+                amount: parseFloat(document.getElementById('tAmount').value),
+                desc: document.getElementById('tDesc').value,
+                account: document.getElementById('tAccount').value
+            };
+            transactions.unshift(newTrx);
+            els.form.reset();
+            document.getElementById('tDate').valueAsDate = new Date();
+            saveData();
+        });
+
+        // Manage Accounts
+        document.getElementById('accountForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const name = document.getElementById('newAccountName').value.trim();
+            if(name && !accounts.includes(name)) {
+                accounts.push(name);
+                document.getElementById('newAccountName').value = '';
+                saveData();
+            }
+        });
+
+        // Helpers
+        window.deleteTransaction = (id) => { if(confirm('Hapus?')) { transactions = transactions.filter(t => t.id !== id); saveData(); } };
+        window.deleteAccount = (name) => { if(confirm('Hapus akun?')) { accounts = accounts.filter(a => a !== name); saveData(); } };
+        window.switchTab = (tab) => {
+            ['viewHistory', 'viewDaily', 'viewMonthly'].forEach(id => document.getElementById(id).classList.add('hidden'));
+            ['btnHistory', 'btnDaily', 'btnMonthly'].forEach(id => document.getElementById(id).classList.replace('bg-slate-100', 'hover:bg-slate-50'));
+            ['btnHistory', 'btnDaily', 'btnMonthly'].forEach(id => document.getElementById(id).classList.add('text-slate-500'));
+            
+            if(tab === 'history') { 
+                document.getElementById('viewHistory').classList.remove('hidden'); 
+                document.getElementById('btnHistory').classList.add('bg-slate-100', 'text-slate-900');
+                document.getElementById('btnHistory').classList.remove('text-slate-500');
+            }
+            else if(tab === 'daily') { 
+                document.getElementById('viewDaily').classList.remove('hidden');
+                document.getElementById('btnDaily').classList.add('bg-slate-100', 'text-slate-900');
+                document.getElementById('btnDaily').classList.remove('text-slate-500');
+            }
+            else { 
+                document.getElementById('viewMonthly').classList.remove('hidden');
+                document.getElementById('btnMonthly').classList.add('bg-slate-100', 'text-slate-900');
+                document.getElementById('btnMonthly').classList.remove('text-slate-500');
+            }
+        };
+
+        // Render Functions
+        function formatRupiah(n) { return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n); }
+
+        function updateUI() {
+            // Render Dropdown & List
+            els.accountSelect.innerHTML = accounts.map(a => `<option>${a}</option>`).join('');
+            els.accountList.innerHTML = accounts.map(a => `<li class="flex justify-between p-2 bg-slate-50 rounded"><span>${a}</span><button onclick="deleteAccount('${a}')" class="text-rose-500"><i class="fa-solid fa-trash"></i></button></li>`).join('');
+
+            // Summary
+            const inc = transactions.filter(t => t.type === 'income').reduce((a, b) => a + b.amount, 0);
+            const exp = transactions.filter(t => t.type === 'expense').reduce((a, b) => a + b.amount, 0);
+            els.balance.innerText = formatRupiah(inc - exp);
+            els.income.innerText = formatRupiah(inc);
+            els.expense.innerText = formatRupiah(exp);
+
+            // Table
+            if(transactions.length === 0) els.emptyState.classList.remove('hidden');
+            else els.emptyState.classList.add('hidden');
+
+            els.tableBody.innerHTML = transactions.map(t => `
+                <tr class="hover:bg-slate-50 border-b border-slate-50">
+                    <td class="p-4 text-slate-500 whitespace-nowrap">${t.date}</td>
+                    <td class="p-4 font-medium">${t.desc}</td>
+                    <td class="p-4"><span class="bg-slate-100 px-2 py-1 rounded text-xs font-bold text-slate-600">${t.account}</span></td>
+                    <td class="p-4 text-right font-bold ${t.type === 'income' ? 'text-emerald-600' : 'text-rose-600'}">${t.type === 'income' ? '+' : '-'} ${formatRupiah(t.amount)}</td>
+                    <td class="p-4 text-center"><button onclick="deleteTransaction(${t.id})" class="text-slate-300 hover:text-rose-500"><i class="fa-solid fa-trash"></i></button></td>
+                </tr>
+            `).join('');
+
+            // Simple Recaps (Logic Simplified for brevity)
+            const days = {}; transactions.forEach(t => { if(!days[t.date]) days[t.date]={i:0,o:0}; t.type==='income'?days[t.date].i+=t.amount:days[t.date].o+=t.amount; });
+            els.dailyBody.innerHTML = Object.keys(days).sort().reverse().map(d => `<tr class="border-b border-slate-50"><td class="p-4 text-slate-600">${d}</td><td class="p-4 text-emerald-600">${formatRupiah(days[d].i)}</td><td class="p-4 text-rose-600">${formatRupiah(days[d].o)}</td></tr>`).join('');
+            
+            const months = {}; transactions.forEach(t => { const m = t.date.slice(0,7); if(!months[m]) months[m]={i:0,o:0}; t.type==='income'?months[m].i+=t.amount:months[m].o+=t.amount; });
+            els.monthlyBody.innerHTML = Object.keys(months).sort().reverse().map(m => `<tr class="border-b border-slate-50"><td class="p-4 text-slate-600">${m}</td><td class="p-4 text-emerald-600">${formatRupiah(months[m].i)}</td><td class="p-4 text-rose-600">${formatRupiah(months[m].o)}</td></tr>`).join('');
+        }
+
+        window.downloadCSV = () => {
+            let csv = "data:text/csv;charset=utf-8,Tanggal,Jenis,Ket,Akun,Nominal\n" + transactions.map(r => `${r.date},${r.type},${r.desc},${r.account},${r.amount}`).join("\n");
+            const link = document.createElement("a"); link.href = encodeURI(csv); link.download = "laporan.csv"; link.click();
+        }
+
+    </script>
+</body>
+</html>
